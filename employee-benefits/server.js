@@ -1,35 +1,36 @@
-// --- File: server.js ---
+
 
 // 1. IMPORT MODULES
 const express = require('express');
 const path = require('path');
 const { Pool } = require('pg');
 const cors = require('cors');
-require('dotenv').config();
+
+// --- CONFIGURE YOUR DATABASE HERE ---
+const dbConfig = {
+    user: 'postgres',
+    host: 'localhost',
+    database: 'benefits_db',
+    password: '1234',
+    port: 5432,
+};
+// ------------------------------------
 
 // 2. INITIALIZE APP AND DATABASE POOL
 const app = express();
-const PORT = process.env.PORT || 3000;
-const pool = new Pool({
-    user: process.env.DB_USER,
-    host: process.env.DB_HOST,
-    database: process.env.DB_DATABASE,
-    password: process.env.DB_PASSWORD,
-    port: process.env.DB_PORT,
-});
+const PORT = 3000;
+const pool = new Pool(dbConfig);
 
 // 3. CONFIGURE MIDDLEWARE
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-// 4. DATABASE SETUP FUNCTION (Manages both tables)
+// 4. DATABASE SETUP FUNCTION 
 const setupDatabase = async () => {
     const client = await pool.connect();
     try {
-        await client.query('BEGIN'); // Start a transaction
-
-        // Create 'benefits' table
+        await client.query('BEGIN');
         await client.query(`
             CREATE TABLE IF NOT EXISTS benefits (
                 id SERIAL PRIMARY KEY,
@@ -40,8 +41,6 @@ const setupDatabase = async () => {
                 link VARCHAR(255)
             );
         `);
-
-        // Create 'benefit_enrollments' table with a foreign key
         await client.query(`
             CREATE TABLE IF NOT EXISTS benefit_enrollments (
                 enrollment_id SERIAL PRIMARY KEY,
@@ -49,21 +48,17 @@ const setupDatabase = async () => {
                 employee_name VARCHAR(100) NOT NULL,
                 benefit_id INTEGER NOT NULL REFERENCES benefits(id),
                 enrollment_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                status VARCHAR(20) DEFAULT 'Active',
-                UNIQUE(employee_id, benefit_id) -- Prevents duplicate enrollments
+                status VARCHAR(20) DEFAULT 'Pending',
+                UNIQUE(employee_id, benefit_id)
             );
         `);
-        
         console.log("✅ All tables are ready.");
-
-        // Insert sample benefits data (same as before)
         const sampleBenefits = [
             { name: 'Health Insurance Plan', cat: 'Health & Wellness', prov: 'BlueCross', desc: 'Comprehensive medical, dental, and vision coverage.', link: '#' },
             { name: '401(k) Retirement Plan', cat: 'Financial', prov: 'Fidelity', desc: 'Company-matching contributions up to 5%.', link: '#' },
             { name: 'Paid Time Off (PTO)', cat: 'Time Off', prov: 'Internal', desc: 'Generous vacation, sick leave, and personal days.', link: '#' },
             { name: 'Professional Development', cat: 'Career', prov: 'Udemy', desc: 'Access to online courses and a yearly conference budget.', link: '#' }
         ];
-
         for (const benefit of sampleBenefits) {
             await client.query(
                 `INSERT INTO benefits (benefit_name, category, provider, description, link)
@@ -72,11 +67,9 @@ const setupDatabase = async () => {
             );
         }
         console.log("✅ Sample benefits data checked/inserted.");
-        
-        await client.query('COMMIT'); // Commit the transaction
-
+        await client.query('COMMIT');
     } catch (err) {
-        await client.query('ROLLBACK'); // Rollback on error
+        await client.query('ROLLBACK');
         console.error("❌ Error setting up database:", err);
         process.exit(1);
     } finally {
@@ -85,7 +78,8 @@ const setupDatabase = async () => {
 };
 
 // 5. DEFINE API ROUTES
-// GET all available benefits
+
+// --- Employee-Facing Routes ---
 app.get('/api/benefits', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM benefits ORDER BY category, benefit_name');
@@ -93,7 +87,6 @@ app.get('/api/benefits', async (req, res) => {
     } catch (err) { res.status(500).json({ message: 'Failed to fetch benefits.' }); }
 });
 
-// POST to enroll in a benefit (from the form)
 app.post('/api/enroll', async (req, res) => {
     const { employee_id, employee_name, benefit_id } = req.body;
 
@@ -102,34 +95,66 @@ app.post('/api/enroll', async (req, res) => {
     }
     
     try {
+        
         await pool.query(
-            'INSERT INTO benefit_enrollments (employee_id, employee_name, benefit_id) VALUES ($1, $2, $3)',
-            [employee_id, employee_name, benefit_id]
+            'INSERT INTO benefit_enrollments (employee_id, employee_name, benefit_id, status) VALUES ($1, $2, $3, $4)',
+            [employee_id, employee_name, benefit_id, 'Pending']
         );
-        res.status(201).json({ success: true, message: 'Enrollment successful!' });
+        res.status(201).json({ success: true, message: 'Enrollment submitted for HR approval!' });
     } catch (err) {
         if (err.code === '23505') { // Unique violation code
-            return res.status(409).json({ success: false, message: 'You are already enrolled in this benefit.' });
+            return res.status(409).json({ success: false, message: 'You have already submitted an enrollment for this benefit.' });
         }
         console.error(err);
         res.status(500).json({ success: false, message: 'Server error during enrollment.' });
     }
 });
 
-// GET an employee's current enrollments
+
 app.get('/api/enrollments/:employeeId', async (req, res) => {
     try {
         const { employeeId } = req.params;
         const result = await pool.query(
-            `SELECT b.benefit_name, b.category, e.enrollment_date 
+            `SELECT b.benefit_name, b.category, e.enrollment_date, e.status
              FROM benefit_enrollments e
              JOIN benefits b ON e.benefit_id = b.id
-             WHERE e.employee_id = $1
+             WHERE e.employee_id = $1 AND e.status = 'Approved'
              ORDER BY e.enrollment_date DESC`,
             [employeeId]
         );
         res.json(result.rows);
     } catch (err) { res.status(500).json({ message: 'Failed to fetch enrollments.' }); }
+});
+
+// --- HR-Facing Routes ---
+app.get('/api/hr/enrollments', async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT e.enrollment_id, e.employee_id, e.employee_name, b.benefit_name, e.enrollment_date, e.status
+             FROM benefit_enrollments e JOIN benefits b ON e.benefit_id = b.id
+             ORDER BY CASE e.status WHEN 'Pending' THEN 1 ELSE 2 END, e.enrollment_date DESC`
+        );
+        res.json(result.rows);
+    } catch (err) { res.status(500).json({ message: 'Failed to fetch HR enrollments.' }); }
+});
+
+app.post('/api/hr/update-status', async (req, res) => {
+    const { enrollment_id, status } = req.body;
+    if (!enrollment_id || !status || !['Approved', 'Denied'].includes(status)) {
+        return res.status(400).json({ success: false, message: 'Invalid request data.' });
+    }
+    try {
+        const result = await pool.query(
+            'UPDATE benefit_enrollments SET status = $1 WHERE enrollment_id = $2 RETURNING enrollment_id',
+            [status, enrollment_id]
+        );
+        if (result.rowCount === 0) {
+            return res.status(404).json({ success: false, message: 'Enrollment not found.' });
+        }
+        res.json({ success: true, message: `Enrollment status updated to ${status}.` });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Server error while updating status.' });
+    }
 });
 
 
