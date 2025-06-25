@@ -1,0 +1,123 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR Benefits Management</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+        :root { --primary-blue: #007bff; --light-grey: #f8f9fa; --dark-text: #343a40; --card-shadow: rgba(0, 0, 0, 0.1); }
+        body { font-family: 'Poppins', sans-serif; background-color: var(--light-grey); color: var(--dark-text); }
+        .header { background: linear-gradient(135deg, #2c3e50, #4c5c68); color: white; padding: 40px 20px; text-align: center; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .section-box { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 20px var(--card-shadow); margin-top: 40px;}
+        h2 { font-size: 1.5rem; margin-bottom: 20px; border-bottom: 2px solid var(--light-grey); padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f8f9fa; font-weight: 600; }
+        tr:hover { background-color: #f1f1f1; }
+        .btn { padding: 8px 15px; border: none; border-radius: 5px; font-weight: 500; cursor: pointer; transition: all 0.2s; margin: 0 5px; display: inline-block; }
+        .btn:hover { opacity: 0.8; }
+        .btn-approve { background-color: #28a745; color: white; }
+        .btn-deny { background-color: #dc3545; color: white; }
+        .status-badge { padding: 5px 10px; border-radius: 20px; color: white; font-size: 0.8rem; font-weight: 600; }
+        .status-approved { background-color: #28a745; }
+        .status-denied { background-color: #dc3545; }
+        .status-pending { background-color: #ffc107; color: #343a40; }
+        .status-unknown { background-color: #6c757d; } /* NEW: Style for unknown status */
+    </style>
+</head>
+<body>
+
+    <header class="header"><h1><i class="fa-solid fa-user-shield"></i> HR Benefits Management</h1></header>
+
+    <div class="container">
+        <div class="section-box">
+            <h2><i class="fa-solid fa-hourglass-half"></i> Pending Enrollment Requests</h2>
+            <table id="pending-table">
+                <thead><tr><th>Employee Name</th><th>Employee ID</th><th>Benefit</th><th>Submitted Date</th><th>Actions</th></tr></thead>
+                <tbody id="pending-tbody"></tbody>
+            </table>
+        </div>
+        <div class="section-box">
+            <h2><i class="fa-solid fa-clipboard-check"></i> Processed Enrollment History</h2>
+            <table id="processed-table">
+                <thead><tr><th>Employee Name</th><th>Benefit</th><th>Submitted Date</th><th>Status</th></tr></thead>
+                <tbody id="processed-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3000';
+        const pendingTbody = document.getElementById('pending-tbody');
+        const processedTbody = document.getElementById('processed-tbody');
+        
+        document.addEventListener('DOMContentLoaded', fetchAllEnrollments);
+        pendingTbody.addEventListener('click', handleActionClick);
+
+        async function fetchAllEnrollments() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/hr/enrollments`);
+                const enrollments = await response.json();
+
+                pendingTbody.innerHTML = '';
+                processedTbody.innerHTML = '';
+                let pendingCount = 0;
+
+                enrollments.forEach(e => {
+                    const submittedDate = new Date(e.enrollment_date).toLocaleDateString();
+
+                    
+                    if (e.status === 'Pending') {
+                        pendingCount++;
+                        const rowHTML = `<tr><td>${e.employee_name}</td><td>${e.employee_id}</td><td>${e.benefit_name}</td><td>${submittedDate}</td><td><button class="btn btn-approve" data-id="${e.enrollment_id}">Approve</button><button class="btn btn-deny" data-id="${e.enrollment_id}">Deny</button></td></tr>`;
+                        pendingTbody.innerHTML += rowHTML;
+                    } else {
+                        
+                        const statusText = e.status || 'Unknown';
+                        const statusClass = (e.status || 'unknown').toLowerCase();
+                        const statusBadge = `<span class="status-badge status-${statusClass}">${statusText}</span>`;
+                        const rowHTML = `<tr><td>${e.employee_name}</td><td>${e.benefit_name}</td><td>${submittedDate}</td><td>${statusBadge}</td></tr>`;
+                        processedTbody.innerHTML += rowHTML;
+                    }
+                });
+
+                if (pendingCount === 0) {
+                    pendingTbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No pending requests.</td></tr>';
+                }
+            } catch (error) {
+                console.error("Failed to fetch enrollments:", error);
+                pendingTbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Error loading data. Check server connection.</td></tr>';
+            }
+        }
+
+        async function handleActionClick(event) {
+            const target = event.target;
+            if (target.tagName !== 'BUTTON') return;
+            const enrollmentId = target.dataset.id;
+            const action = target.classList.contains('btn-approve') ? 'Approved' : 'Denied';
+            if (confirm(`Are you sure you want to ${action.toLowerCase()} this enrollment?`)) {
+                await updateStatus(enrollmentId, action);
+            }
+        }
+
+        async function updateStatus(enrollment_id, status) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/hr/update-status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enrollment_id, status }) });
+                const result = await response.json();
+                if (result.success) {
+                    fetchAllEnrollments();
+                } else {
+                    alert(`Error: ${result.message}`);
+                }
+            } catch (error) {
+                console.error("Failed to update status:", error);
+                alert('A server error occurred while updating status.');
+            }
+        }
+    </script>
+</body>
+</html>
