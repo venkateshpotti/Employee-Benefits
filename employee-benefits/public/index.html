@@ -1,3 +1,4 @@
+<!-- public/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,182 +11,100 @@
         :root { --primary-blue: #007bff; --light-grey: #f8f9fa; --dark-text: #343a40; --card-shadow: rgba(0, 0, 0, 0.1); }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Poppins', sans-serif; background-color: var(--light-grey); color: var(--dark-text); }
-        
         .header { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 40px 20px; text-align: center; }
-        .header h1 { font-size: 2.5rem; font-weight: 700; }
-        
         .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
         .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px; }
         @media (max-width: 900px) { .grid-container { grid-template-columns: 1fr; } }
-        
         .section-box { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 20px var(--card-shadow); }
         h2 { font-size: 1.5rem; margin-bottom: 20px; border-bottom: 2px solid var(--light-grey); padding-bottom: 10px; }
-
-        /* Form Styles */
         .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; }
         .form-control { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 1rem; }
-        .btn { background-color: var(--primary-blue); color: white; text-decoration: none; padding: 12px 20px; border: none; border-radius: 5px; font-weight: 600; cursor: pointer; transition: background-color 0.2s; }
+        .btn { background-color: var(--primary-blue); color: white; padding: 12px 20px; border: none; border-radius: 5px; font-weight: 600; cursor: pointer; transition: background-color 0.2s; }
         .btn:hover { background-color: #0056b3; }
-        
         #status-message { padding: 15px; margin-top: 20px; border-radius: 5px; text-align: center; font-weight: 500; display: none; }
         .status-success { background-color: #d4edda; color: #155724; }
         .status-error { background-color: #f8d7da; color: #721c24; }
-
-        /* Enrollment List Styles */
         #enrollments-list { list-style-type: none; }
         #enrollments-list li { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        
-        /* Available Benefits Styles */
-        #benefits-container { display: grid; grid-template-columns: 1fr; gap: 20px; margin-top: 40px; }
         .benefit-card { background: white; border: 1px solid #eee; border-radius: 10px; padding: 20px; }
         .category-badge { display: inline-block; background-color: #e7f1ff; color: var(--primary-blue); padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; margin-bottom: 10px; }
     </style>
 </head>
 <body>
-
-    <header class="header">
-        <h1><i class="fa-solid fa-gift"></i> Employee Benefits Portal</h1>
-    </header>
-
+    <header class="header"><h1><i class="fa-solid fa-gift"></i> Employee Benefits Portal</h1></header>
     <div class="container">
         <div class="grid-container">
-            <!-- Left Column: Enrollment Form -->
             <div class="section-box">
                 <h2><i class="fa-solid fa-file-signature"></i> Enroll in a Benefit</h2>
                 <form id="enrollment-form">
-                    <div class="form-group">
-                        <label for="employee-id">Employee ID</label>
-                        <input type="text" id="employee-id" class="form-control" placeholder="e.g., ATS0123" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="employee-name">Full Name</label>
-                        <input type="text" id="employee-name" class="form-control" placeholder="e.g., Jane Doe" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="benefit-select">Choose a Benefit</label>
-                        <select id="benefit-select" class="form-control" required>
-                            <option value="">-- Loading Benefits --</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn" style="width: 100%;">Enroll Now</button>
+                    <div class="form-group"><label for="employee-id">Employee ID</label><input type="text" id="employee-id" class="form-control" required></div>
+                    <div class="form-group"><label for="employee-name">Full Name</label><input type="text" id="employee-name" class="form-control" required></div>
+                    <div class="form-group"><label for="benefit-select">Choose a Benefit</label><select id="benefit-select" class="form-control" required><option value="">-- Loading Benefits --</option></select></div>
+                    <button type="submit" class="btn" style="width: 100%;">Submit for Approval</button>
                     <div id="status-message"></div>
                 </form>
             </div>
-
-            <!-- Right Column: My Enrollments -->
             <div class="section-box">
-                <h2><i class="fa-solid fa-list-check"></i> My Enrollments</h2>
+                <h2><i class="fa-solid fa-list-check"></i> My Approved Enrollments</h2>
                 <div id="lookup-section">
-                    <div class="form-group">
-                        <label for="lookup-employee-id">Enter Your Employee ID to View</label>
-                        <input type="text" id="lookup-employee-id" class="form-control" placeholder="e.g., ATS0123">
-                    </div>
+                    <div class="form-group"><label for="lookup-employee-id">Enter Your Employee ID to View</label><input type="text" id="lookup-employee-id" class="form-control"></div>
                     <button id="lookup-btn" class="btn">View My Enrollments</button>
                 </div>
-                <ul id="enrollments-list" style="margin-top: 20px;">
-                    <!-- Enrollments will be dynamically inserted here -->
-                </ul>
+                <ul id="enrollments-list" style="margin-top: 20px;"></ul>
             </div>
         </div>
-
         <div class="section-box" style="margin-top: 40px;">
             <h2><i class="fa-solid fa-table-list"></i> Available Benefits</h2>
-            <div id="benefits-container">
-                 <!-- Benefit cards will be dynamically inserted here -->
-            </div>
+            <div id="benefits-container"></div>
         </div>
     </div>
-
     <script>
-        const enrollmentForm = document.getElementById('enrollment-form');
-        const statusMessage = document.getElementById('status-message');
-        const benefitSelect = document.getElementById('benefit-select');
-        const benefitsContainer = document.getElementById('benefits-container');
-        const lookupBtn = document.getElementById('lookup-btn');
-        const enrollmentsList = document.getElementById('enrollments-list');
-
-        // Runs when the page is loaded
+        const API_BASE_URL = 'http://localhost:3000';
         document.addEventListener('DOMContentLoaded', fetchAndDisplayAllBenefits);
+        document.getElementById('enrollment-form').addEventListener('submit', handleEnrollment);
+        document.getElementById('lookup-btn').addEventListener('click', fetchEmployeeEnrollments);
 
-        // Fetches all available benefits to populate cards AND the form dropdown
         async function fetchAndDisplayAllBenefits() {
             try {
-                const response = await fetch('/api/benefits');
+                const response = await fetch(`${API_BASE_URL}/api/benefits`);
                 const benefits = await response.json();
-                
-                // Populate the cards
-                benefitsContainer.innerHTML = benefits.map(b => `
-                    <div class="benefit-card">
-                        <span class="category-badge">${b.category}</span>
-                        <h3>${b.benefit_name}</h3>
-                        <p>${b.description}</p>
-                    </div>
-                `).join('');
-
-                // Populate the dropdown in the form
-                benefitSelect.innerHTML = '<option value="">-- Select a Benefit --</option>';
-                benefitSelect.innerHTML += benefits.map(b => `<option value="${b.id}">${b.benefit_name}</option>`).join('');
-
+                const benefitsContainer = document.getElementById('benefits-container');
+                const benefitSelect = document.getElementById('benefit-select');
+                benefitsContainer.innerHTML = benefits.map(b => `<div class="benefit-card"><span class="category-badge">${b.category}</span><h3>${b.benefit_name}</h3><p>${b.description}</p></div>`).join('');
+                benefitSelect.innerHTML = '<option value="">-- Select a Benefit --</option>' + benefits.map(b => `<option value="${b.id}">${b.benefit_name}</option>`).join('');
             } catch (error) { console.error('Failed to load benefits:', error); }
         }
 
-        // Handle the enrollment form submission
-        enrollmentForm.addEventListener('submit', async (e) => {
+        async function handleEnrollment(e) {
             e.preventDefault();
-            
-            const data = {
-                employee_id: document.getElementById('employee-id').value,
-                employee_name: document.getElementById('employee-name').value,
-                benefit_id: benefitSelect.value
-            };
-
-            if (!data.employee_id || !data.employee_name || !data.benefit_id) {
-                alert('Please fill out all fields.');
-                return;
-            }
-
+            const data = { employee_id: document.getElementById('employee-id').value, employee_name: document.getElementById('employee-name').value, benefit_id: document.getElementById('benefit-select').value };
+            if (!data.employee_id || !data.employee_name || !data.benefit_id) return;
             try {
-                const response = await fetch('/api/enroll', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
+                const response = await fetch(`${API_BASE_URL}/api/enroll`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
                 const result = await response.json();
-
+                const statusMessage = document.getElementById('status-message');
                 statusMessage.textContent = result.message;
                 statusMessage.className = result.success ? 'status-success' : 'status-error';
                 statusMessage.style.display = 'block';
-
-                if (result.success) enrollmentForm.reset();
-
+                if (result.success) document.getElementById('enrollment-form').reset();
             } catch (error) { console.error('Enrollment error:', error); }
-        });
+        }
 
-        // Handle the "View My Enrollments" button click
-        lookupBtn.addEventListener('click', async () => {
+        async function fetchEmployeeEnrollments() {
             const employeeId = document.getElementById('lookup-employee-id').value;
-            if (!employeeId) {
-                alert('Please enter an Employee ID.');
-                return;
-            }
-
+            if (!employeeId) return;
             try {
-                const response = await fetch(`/api/enrollments/${employeeId}`);
+                const response = await fetch(`${API_BASE_URL}/api/enrollments/${employeeId}`);
                 const enrollments = await response.json();
-
+                const list = document.getElementById('enrollments-list');
                 if (enrollments.length === 0) {
-                    enrollmentsList.innerHTML = '<li>No enrollments found for this ID.</li>';
+                    list.innerHTML = '<li>No approved enrollments found.</li>';
                 } else {
-                    enrollmentsList.innerHTML = enrollments.map(e => `
-                        <li>
-                            <span><strong>${e.benefit_name}</strong> (${e.category})</span>
-                            <small>Enrolled: ${new Date(e.enrollment_date).toLocaleDateString()}</small>
-                        </li>
-                    `).join('');
+                    list.innerHTML = enrollments.map(e => `<li><span><strong>${e.benefit_name}</strong> (${e.category})</span><small>Approved On: ${new Date(e.enrollment_date).toLocaleDateString()}</small></li>`).join('');
                 }
             } catch (error) { console.error('Lookup error:', error); }
-        });
+        }
     </script>
 </body>
 </html>
